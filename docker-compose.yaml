@@ -29,7 +29,7 @@ services:
       - TZ=America/Argentina/Buenos_Aires
     volumes:
       - ./sonarr:/config
-      - ${MEDIA}:/tv 
+      - ${MEDIA}:/tv:rw
       - ${STORAGE}/downloads:/downloads 
     ports:
       - 8989:8989
@@ -46,8 +46,8 @@ services:
       - TZ=America/Argentina/Buenos_Aires
     volumes:
       - ./radarr:/config
-      - ${MEDIA}:/movies 
-      - ${STORAGE}/downloads:/downloads 
+      - ${MEDIA}:/movies:rw
+      - ${STORAGE}/downloads:/downloads
     ports:
       - 7878:7878
     restart: unless-stopped
@@ -65,7 +65,7 @@ services:
       - TORRENTING_PORT=6881
     volumes:
       - ./qbittorrent:/config
-      - ${STORAGE}/downloads:/downloads
+      - ${STORAGE}/downloads:/downloads:rw
     ports:
       - 8080:8080
       - 6881:6881
