@@ -1,7 +1,6 @@
 version: "3.7"
 
 services:
-
   samba:
     image: dperson/samba # no hay tag con versiones, solo latest
     restart: always
@@ -18,7 +17,7 @@ services:
       - ${STORAGE}/torrents:/downloads
 
   plex:
-    image: jaymoulin/plex:1.30.1.6562
+    image: linuxserver/plex:latest #jaymoulin/plex:1.30.1.6562
     expose:
       - 32400
       - 33400
@@ -35,6 +34,7 @@ services:
     restart: unless-stopped
     # network_mode: "host" # Solo funciona en Linux
 
+  # Fix buffer https://github.com/transmission/transmission/issues/342#issuecomment-397833840
   transmission:
     image : jaymoulin/transmission:3.00-1.6.1
     command: transmission-daemon -f -g /config
