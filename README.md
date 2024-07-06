@@ -1,103 +1,22 @@
-# Plex sobre Docker en Raspberry
+# Plex sobre Docker en Raspberry o cualquier SV cloud
 
-Con este repo podes crear tu propio server que descarga tus series y peliculas automáticamente, y cuando finaliza, las copia al directorio `media/` donde Plex las encuentra y las agrega a tu biblioteca.
+## Step by Step
 
-También agregué un pequeño server samba por si querés compartir los archivos por red
-
-Todo esto es parte de unos tutoriales que estoy subiendo a [Youtube](https://www.youtube.com/playlist?list=PLqRCtm0kbeHCEoCM8TR3VLQdoyR2W1_wv)
-
-NOTA: Esta repo fue actualizada para correr usando flexget y transmission [en este video](https://youtu.be/TqVoHWjz_tI), podés todavia acceder a la versión vieja (con rtorrent) en la branch [rtorrent](https://github.com/pablokbs/plex-rpi/tree/rtorrent)
-
-## Requerimientos iniciales
-
-Agregar tu usuario (cambiar `kbs` con tu nombre de usuario)
-
-```
-sudo useradd kbs -G sudo
-```
-
-Agregar esto al sudoers para correr sudo sin password
-
-```
-%sudo   ALL=(ALL:ALL) NOPASSWD:ALL
-```
-
-Agregar esta linea a `sshd_config` para que sólo tu usuario pueda hacer ssh
-
-```
-echo "AllowUsers kbs" | sudo tee -a /etc/ssh/sshd_config
-sudo systemctl enable ssh && sudo systemctl start ssh
-```
-
-Instalar paquetes básicos
-
-```
-sudo apt-get update && sudo apt-get install -y \
-     apt-transport-https \
-     ca-certificates \
-     curl \
-     gnupg2 \
-     software-properties-common \
-     vim \
-     fail2ban \
-     ntfs-3g
-```
-
-Instalar Docker
-
-```
-curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
-sudo apt-key fingerprint 0EBFCD88
-echo "deb [arch=armhf] https://download.docker.com/linux/debian \
-     $(lsb_release -cs) stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list
-sudo apt-get update && sudo apt-get install -y --no-install-recommends docker-ce docker-compose
-```
-
-Modificá tu docker config para que guarde los temps en el disco:
-
-```
-sudo vim /etc/default/docker
-# Agregar esta linea al final con la ruta de tu disco externo montado
-export DOCKER_TMPDIR="/mnt/storage/docker-tmp"
-```
-
-Agregar tu usuario al grupo docker 
-
-```
-# Add kbs to docker group
-sudo usermod -a -G docker kbs
-#(logout and login)
-docker-compose up -d
-```
-
-Montar el disco (es necesario ntfs-3g si es que tenes tu disco en NTFS)
-NOTA: en este [link](https://youtu.be/OYAnrmbpHeQ?t=5543) pueden ver la explicación en vivo
-
-```
-# usamos la terminal como root porque vamos a ejecutar algunos comandos que necesitan ese modo de ejecución
-sudo su
-# buscamos el disco que querramos montar (por ejemplo la partición sdb1 del disco sdb)
-fdisk -l
-# pueden usar el siguiente comando para obtener el UUID
-ls -l /dev/disk/by-uuid/
-# y simplemente montamos el disco en el archivo /etc/fstab (pueden hacerlo por el editor que les guste o por consola)
-echo UUID="{nombre del disco o UUID que es único por cada disco}" {directorio donde queremos montarlo} (por ejemplo /mnt/storage) ntfs-3g defaults,auto 0 0 | \
-     sudo tee -a /etc/fstab
-# por último para que lea el archivo fstab
-mount -a (o reiniciar)
-```
-
-## Cómo correrlo
-
-Simplemente bajate este repo y modificá las rutas de tus archivos en el archivo (oculto) .env, y después corré:
-
-`docker-compose up -d`
-
-## IMPORTANTE
-
-Las raspberry son computadoras excelentes pero no muy potentes, y plex por defecto intenta transcodear los videos para ahorrar ancho de banda (en mi opinión, una HORRIBLE idea), y la chiquita raspberry no se aguanta este transcodeo "al vuelo", entonces hay que configurar los CLIENTES de plex (si, hay que hacerlo en cada cliente) para que intente reproducir el video en la máxima calidad posible, evitando transcodear y pasando el video derecho a tu tele o Chromecast sin procesar nada, de esta forma, yo he tenido 3 reproducciones concurrentes sin ningún problema. En android y iphone las opciones son muy similares, dejo un screenshot de Android acá:
-
-<img src="https://i.imgur.com/F3kZ9Vh.png" alt="plex" width="400"/>
-
-Más info acá: https://github.com/pablokbs/plex-rpi/issues/3
+1. Tener instalado docker & docker compose
+     (Solo si estas armandolo fuera de tu red local)
+     a. Ir a [Plex claim](https://www.plex.tv/claim/) y obtener tu claim token
+     b. Modificar el docker-compose.yml con tu claim token
+3. Hacer un `docker-compose up -d` o `docker compose up -d`
+4. Hacer `docker container logs qbittorrent` para obtener la contraseña temporal
+5. Ir a qBittorrent `http://<server_ip>:8080` y cambiar la contraseña
+6. Ir a jackett `http://<server_ip>:9117` cambiar la contraseña y configurar indexers (con agregar 1337x deberia alcanzar)
+7. Ir a radarr `http://<server_ip>:7878`
+     a. Configurar una contraseña
+     b. Agregar qBittorrent como cliente (el hostname es qBittorrent porque todos los servicios están en la misma red de docker)
+     c. Agregar jackett como indexador (el hostname es jackett). Te recomiendo usar el modo torznab
+     d. En Media Management, configurar el renombrado de archivos para que plex los detecte correctamente (tenes que tickear la opcion y darle a guardar nomas)
+     e. Configurar la libreria de películas (/movies). Si esto te da error de permisos solo tenes que hacer `sudo chown -R 1000:1000 /mnt/storage/media` (o donde hayas configurado la env variable ${MEDIA})
+8. Ir a sonarr `http://<server_ip>:8989`
+     a. Hacer todo lo mismo que en radarr, aca la libreria de series esta en /tv.
+9. Ir a plex `http://<server_ip>:32400/manage` y configurar tu biblioteca de series y películas (/media)
+10. (opcional) Si lo estas montando en un SV cloud tenes que encender el acceso directo porque sino por default hace un tunnel por un proxy de plex que es muy lento. Te vas a dar cuenta porque no ves el contenido en la calidad que deberias.

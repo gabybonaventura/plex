@@ -12,7 +12,8 @@ services:
       - 33400:33400
     environment:
       - TZ=America/Argentina/Buenos_Aires
-      - PLEX_CLAIM=claim-xxxxxx # TODO: https://www.plex.tv/claim/ 
+      # Solo aplica si lo estas montando fuera de tu red local, osea en un servidor remoto
+      # - PLEX_CLAIM=claim-xxxxxx # TODO: https://www.plex.tv/claim/ 
     volumes:
       - ${STORAGE}/Plex Media Server:/root/Library/Application Support/Plex Media Server
       - ${MEDIA}:/media
