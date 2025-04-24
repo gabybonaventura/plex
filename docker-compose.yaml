@@ -1,57 +1,27 @@
 version: "3.7"
 
 services:
-  plex:
-    image: linuxserver/plex:latest 
-    container_name: plex
-    expose:
-      - 32400
-      - 33400
-    ports:
-      - 32400:32400
-      - 33400:33400
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
     environment:
-      - TZ=Europe/Madrid
-      # Solo aplica si lo estas montando fuera de tu red local, osea en un servidor remoto
-      # - PLEX_CLAIM=claim-xxxxxx # TODO: https://www.plex.tv/claim/ 
-    volumes:
-      - ${STORAGE}/Plex Media Server:/root/Library/Application Support/Plex Media Server
-      - ${MEDIA}:/media
-      - ${STORAGE}/tmp:/tmp
-    restart: unless-stopped
-    networks:
-      - plex_network
-
-  sonarr:
-    image: linuxserver/sonarr:latest
-    container_name: sonarr
-    environment:
-      - PUID=1000
-      - PGID=1000
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=123456789012  # Reemplazar con tu número de cuenta Mullvad
+      - OPENVPN_PASSWORD=m
+      - SERVER_COUNTRIES=Spain     # Cambialo si querés otro país
       - TZ=Europe/Madrid
     volumes:
-      - ./sonarr:/config
-      - ${MEDIA}:/tv:rw
-      - ${STORAGE}/downloads:/downloads 
+      - ./gluetun:/gluetun
     ports:
-      - 8989:8989
-    restart: unless-stopped
-    networks:
-      - plex_network
-  
-  radarr:
-    image: linuxserver/radarr:latest
-    container_name: radarr
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Madrid
-    volumes:
-      - ./radarr:/config
-      - ${MEDIA}:/movies:rw
-      - ${STORAGE}/downloads:/downloads
-    ports:
-      - 7878:7878
+      - 8081:8081     # qBittorrent
+      - 9117:9117     # Jackett
+      - 7878:7878     # Radarr
+      - 8989:8989     # Sonarr
     restart: unless-stopped
     networks:
       - plex_network
@@ -68,13 +38,10 @@ services:
     volumes:
       - ./qbittorrent:/config
       - ${STORAGE}/downloads:/downloads:rw
-    ports:
-      - 8081:8081
-      - 6881:6881
-      - 6881:6881/udp
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
     restart: unless-stopped
-    networks:
-      - plex_network
 
   jackett:
     image: linuxserver/jackett:latest
@@ -87,35 +54,62 @@ services:
     volumes:
       - ./jackett:/config
       - ${STORAGE}/downloads:/downloads
-    ports:
-      - 9117:9117
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
     restart: unless-stopped
-    networks:
-      - plex_network
 
-  gluetun:
-    image: qmcgaw/gluetun
-    container_name: gluetun
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
     environment:
-      - VPN_SERVICE_PROVIDER=mullvad
-      - VPN_TYPE=openvpn
-      - OPENVPN_USER=
-      - OPENVPN_PASSWORD=m
-      - SERVER_COUNTRIES=USA
+      - PUID=1000
+      - PGID=1000
       - TZ=Europe/Madrid
     volumes:
-      - ./gluetun:/gluetun
+      - ./sonarr:/config
+      - ${MEDIA}:/tv:rw
+      - ${STORAGE}/downloads:/downloads
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    restart: unless-stopped
+
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+    volumes:
+      - ./radarr:/config
+      - ${MEDIA}:/movies:rw
+      - ${STORAGE}/downloads:/downloads
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    restart: unless-stopped
+
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    expose:
+      - 32400
+      - 33400
     ports:
-      - 8081:8081
-      - 9117:9117
+      - 32400:32400
+      - 33400:33400
+    environment:
+      - TZ=Europe/Madrid
+      # - PLEX_CLAIM=claim-xxxxxx
+    volumes:
+      - ${STORAGE}/Plex Media Server:/root/Library/Application Support/Plex Media Server
+      - ${MEDIA}:/media
+      - ${STORAGE}/tmp:/tmp
     restart: unless-stopped
     networks:
       - plex_network
-
 
 networks:
   plex_network:
