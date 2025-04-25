@@ -13,7 +13,7 @@ services:
       - VPN_TYPE=openvpn
       - OPENVPN_USER=123456789012  # Reemplazar con tu número de cuenta Mullvad
       - OPENVPN_PASSWORD=m
-      - SERVER_COUNTRIES=Spain     # Cambialo si querés otro país
+      - SERVER_COUNTRIES=Sweden     # Cambialo si querés otro país
       - TZ=Europe/Madrid
     volumes:
       - ./gluetun:/gluetun
@@ -90,6 +90,23 @@ services:
     depends_on:
       - gluetun
     restart: unless-stopped
+
+  bazarr:
+    image: linuxserver/bazarr
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+    volumes:
+      - ./bazarr:/config
+      - ${MEDIA}:/tv
+      - ${MEDIA}:/movies
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+    networks:
+      - plex_network
 
   plex:
     image: linuxserver/plex:latest
